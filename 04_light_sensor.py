@@ -11,5 +11,5 @@ sensor = BH1750(0x23, i2c)
 # ---- 반복 측정 ----
 while True:
     lux = sensor.measurement
-    print("조도:", lux, "lux")
+    print("조도:", f'{lux:>8.2f}', "lux")
     time.sleep(1)

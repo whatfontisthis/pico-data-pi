@@ -3,29 +3,47 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>IoT 환경 모니터링 (Pico AP 모드)</title>
+    <title>IoT 환경 모니터링 (WiFi Client)</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-      /* --- (수정) AP 모드 안내창 스타일 --- */
-      .ap-instructions {
-        background: #fff8e1; /* 노란색 배경 */
-        border: 1px solid #ffc107;
+      .wifi-instructions {
+        background: #e3f2fd;
+        border: 1px solid #2196f3;
         border-radius: 8px;
         padding: 20px;
         margin-bottom: 20px;
         box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
       }
-      .ap-instructions h2 {
+      .wifi-instructions h2 {
         margin-top: 0;
-        color: #e65100;
+        color: #0d47a1;
         text-align: center;
       }
-      .ap-instructions ol {
-        margin-left: 20px;
-        line-height: 1.6;
-        font-size: 1.1rem;
+      .wifi-instructions .ip-input-group {
+        display: flex;
+        gap: 10px;
+        margin-top: 15px;
+        align-items: center; /* 버튼과 인풋 정렬 */
       }
-      /* --- (기존 CSS와 동일) --- */
+      .wifi-instructions input {
+        flex: 1;
+        padding: 10px;
+        font-size: 1.1rem;
+        border: 1px solid #90caf9;
+        border-radius: 4px;
+      }
+      /* 연결 테스트 버튼 스타일 */
+      .btn-secondary {
+        padding: 10px 15px;
+        font-size: 0.9rem;
+        background: #6c757d;
+        color: white;
+        white-space: nowrap; /* 줄바꿈 방지 */
+      }
+      .btn-secondary:hover {
+        background: #5a6268;
+      }
+
       * {
         margin: 0;
         padding: 0;
@@ -167,7 +185,6 @@
         background: #0d47a1;
         box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
       }
-      /* (추가) 알람 비활성화 버튼 스타일 */
       .btn-warning {
         background: #f57c00;
         color: white;
@@ -175,17 +192,7 @@
       .btn-warning:hover {
         background: #e65100;
       }
-      /* (추가) 연결 테스트 버튼 스타일 */
-      .btn-secondary {
-        padding: 10px 15px;
-        font-size: 0.9rem;
-        background: #6c757d;
-        color: white;
-        white-space: nowrap; /* 줄바꿈 방지 */
-      }
-      .btn-secondary:hover {
-        background: #5a6268;
-      }
+
       .status {
         padding: 6px 12px;
         border-radius: 4px;
@@ -354,28 +361,32 @@
       <div class="header">
         <img src="logo.png" alt="Gongdo Logo" class="logo" />
         <div class="header-content">
-          <h1>IoT 모니터링 대시보드 (Pico AP)</h1>
+          <h1>IoT 모니터링 대시보드 (WiFi Client)</h1>
         </div>
         <div class="header-spacer"></div>
       </div>
 
-      <!-- AP 모드 연결 안내 -->
-      <div class="ap-instructions">
-        <h2>⚠️ AP 모드 연결 안내</h2>
-        <ol>
-          <li>
-            노트북/PC의 Wi-Fi 설정에서 <strong>"rp_pico_00(수정한 두자리 숫자)"</strong>를 찾아
-            연결하세요.
-          </li>
-          <li>비밀번호는 <strong>12345678</strong> 입니다.</li>
-          <li>
-            연결이 완료되면 <strong>[연결 테스트]</strong> 버튼을, 이후
-            <strong>[모니터링 시작]</strong> 버튼을 클릭하세요.
-          </li>
-        </ol>
+      <!-- WiFi 모드 연결 설정 -->
+      <div class="wifi-instructions">
+        <h2>ℹ️ WiFi 모드 연결 설정</h2>
+        <p>
+          1. 피코가 학교 WiFi에 연결되면, OLED에 IP 주소가 표시됩니다. <br />
+          2. 해당 IP 주소를 아래 입력창에 정확히 입력하세요. (예: 192.168.1.105)
+        </p>
+        <div class="ip-input-group">
+          <input
+            type="text"
+            id="picoIP"
+            placeholder="http:// 없이 IP 주소만 입력... (포트: 8080)"
+          />
+          <!-- (추가) 연결 테스트 버튼 -->
+          <button id="testConnectionBtn" class="btn btn-secondary">
+            연결 테스트
+          </button>
+        </div>
       </div>
 
-      <!-- Controls (수정됨) -->
+      <!-- Controls -->
       <div class="controls">
         <!-- 갱신 주기 슬라이더 -->
         <div class="control-group">
@@ -392,7 +403,7 @@
           <span id="intervalValue">1.0초</span>
         </div>
         
-        <!-- 온도 알람 임계점 슬라이더 -->
+        <!-- (수정) 온도 알람 임계점 슬라이더 -->
         <div class="control-group">
           <label for="tempAlarmSlider">온도 알람 임계점 (°C)</label>
           <input
@@ -407,7 +418,7 @@
           <span id="tempAlarmValue">비활성화</span>
         </div>
 
-        <!-- 습도 알람 임계점 슬라이더 -->
+        <!-- (추가) 습도 알람 임계점 슬라이더 -->
         <div class="control-group">
           <label for="humAlarmSlider">습도 알람 임계점 (%)</label>
           <input
@@ -422,7 +433,7 @@
           <span id="humAlarmValue">비활성화</span>
         </div>
 
-        <!-- 조도 알람 임계점 슬라이더 -->
+        <!-- (추가) 조도 알람 임계점 슬라이더 -->
         <div class="control-group">
           <label for="lightAlarmSlider">조도 알람 임계점 (lx)</label>
           <input
@@ -435,6 +446,45 @@
             value="1000"
           />
           <span id="lightAlarmValue">비활성화</span>
+        </div>
+        
+        <!-- (추가) 센서 타입 선택 -->
+        <div class="control-group">
+          <label for="sensorTypeSelect">센서 타입 선택</label>
+          <select id="sensorTypeSelect" style="padding: 8px; border-radius: 4px; border: 1px solid #ccc; font-size: 0.9rem;">
+            <option value="mic">마이크</option>
+            <option value="water">수위</option>
+          </select>
+        </div>
+        
+        <!-- (추가) 마이크 알람 임계점 슬라이더 -->
+        <div class="control-group" id="micAlarmGroup">
+          <label for="micAlarmSlider">마이크 알람 임계점</label>
+          <input
+            type="range"
+            id="micAlarmSlider"
+            class="slider"
+            min="0"
+            max="5000"
+            step="100"
+            value="5000"
+          />
+          <span id="micAlarmValue">비활성화</span>
+        </div>
+        
+        <!-- (추가) 수위 알람 임계점 슬라이더 (0~4cm, 40mm) -->
+        <div class="control-group" id="waterAlarmGroup" style="display: none;">
+          <label for="waterAlarmSlider">수위 알람 임계점 (cm)</label>
+          <input
+            type="range"
+            id="waterAlarmSlider"
+            class="slider"
+            min="0"
+            max="4"
+            step="0.1"
+            value="4"
+          />
+          <span id="waterAlarmValue">비활성화</span>
         </div>
         
         <!-- 상태 표시 -->
@@ -451,12 +501,9 @@
         <button id="startBtn" class="btn btn-primary giant">
           모니터링 시작
         </button>
+        <!-- (추가) 알람 비활성화 버튼 -->
         <button id="disableAlarmBtn" class="btn btn-warning">
           알람 비활성화
-        </button>
-        <!-- (추가) 연결 테스트 버튼 -->
-        <button id="testConnectionBtn" class="btn btn-secondary">
-          연결 테스트
         </button>
       </div>
 
@@ -489,9 +536,17 @@
           </div>
           <div class="metric-status normal" id="lightStatus">대기</div>
         </div>
+        <!-- (추가) 마이크/수위 센서 카드 -->
+        <div class="metric-card" id="adcSensorCard">
+          <div class="metric-icon" id="adcSensorIcon">🎤</div>
+          <div class="metric-label" id="adcSensorLabel">마이크</div>
+          <div class="metric-value">
+            <span id="adcSensorValue">--</span>
+            <span class="metric-unit" id="adcSensorUnit"></span>
+          </div>
+          <div class="metric-status normal" id="adcSensorStatus">대기</div>
+        </div>
       </div>
-      
-      <!-- Charts -->
       <div class="charts-container">
         <h2 style="text-align: center; margin-bottom: 30px; color: #333">
           실시간 데이터 추이
@@ -509,6 +564,11 @@
             <div class="chart-title">조도</div>
             <canvas id="lightChart"></canvas>
           </div>
+          <!-- (추가) 마이크/수위 센서 차트 -->
+          <div class="chart-container">
+            <div class="chart-title" id="adcChartTitle">마이크</div>
+            <canvas id="adcChart"></canvas>
+          </div>
         </div>
       </div>
     </div>
@@ -518,11 +578,6 @@
       let isCollecting = false;
       let interval = 1000;
       let dataInterval;
-
-      // (수정) AP 모드의 고정 IP
-      const PICO_IP = "192.168.4.1";
-      const PICO_API_URL = `http://${PICO_IP}/sensors`; 
-      const PICO_ALARM_URL = `http://${PICO_IP}/alarm_threshold`; // (추가)
 
       // Chart configurations
       const chartConfig = {
@@ -542,7 +597,8 @@
       // Initialize charts
       const tempCtx = document.getElementById("tempChart").getContext("2d");
       const humidityCtx = document.getElementById("humidityChart").getContext("2d");
-      const lightCtx = document.getElementById("lightChart").getContext("2d"); 
+      const lightCtx = document.getElementById("lightChart").getContext("2d");
+      const adcCtx = document.getElementById("adcChart").getContext("2d");
 
       const tempChart = new Chart(tempCtx, {
         ...chartConfig,
@@ -614,24 +670,71 @@
           ],
         },
       });
-      
-      // (추가) 알람 임계값을 피코로 전송하는 함수
+
+      // (추가) ADC 센서 차트 초기화 (마이크/수위)
+      const adcChart = new Chart(adcCtx, {
+        ...chartConfig,
+        options: { ...chartConfig.options, scales: { ...chartConfig.options.scales, y: { ...chartConfig.options.scales.y, beginAtZero: true } } },
+        data: {
+          labels: [],
+          datasets: [
+            { 
+              label: "센서 값",
+              data: [], 
+              borderColor: "#9c27b0", 
+              backgroundColor: "rgba(156, 39, 176, 0.1)", 
+              fill: true 
+            },
+            {
+              label: "위험 임계값",
+              data: [],
+              borderColor: "#424242",
+              backgroundColor: "transparent",
+              borderWidth: 2,
+              borderDash: [5, 5],
+              pointRadius: 0,
+              pointHoverRadius: 0,
+              fill: false,
+            },
+          ],
+        },
+      });
+
+      // 알람 임계값을 피코로 전송하는 함수
       async function sendAlarmThresholds() {
+        const ip = document.getElementById("picoIP").value;
+        if (!ip) {
+          console.warn("IP 주소가 입력되지 않아 임계값을 전송할 수 없습니다.");
+          return;
+        }
+        const url = `http://${ip}:8080/alarm_threshold`;
+        
         const thresholds = {
             temperature: parseFloat(document.getElementById("tempAlarmSlider").value),
             humidity: parseFloat(document.getElementById("humAlarmSlider").value),
             light: parseFloat(document.getElementById("lightAlarmSlider").value)
         };
         
+        // (추가) 마이크/수위 임계값 추가
+        const sensorType = document.getElementById("sensorTypeSelect").value;
+        if (sensorType === "mic") {
+            thresholds.mic = parseFloat(document.getElementById("micAlarmSlider").value);
+        } else if (sensorType === "water") {
+            thresholds.water = parseFloat(document.getElementById("waterAlarmSlider").value);
+        }
+        
+        // (수정) "비활성화" 상태(슬라이더 최대값)면 100만으로 전송
         const highValue = 1000000;
         if (thresholds.temperature >= 50) thresholds.temperature = highValue;
         if (thresholds.humidity >= 100) thresholds.humidity = highValue;
         if (thresholds.light >= 1000) thresholds.light = highValue;
+        if (thresholds.mic && thresholds.mic >= 5000) thresholds.mic = highValue;
+        if (thresholds.water && thresholds.water >= 4) thresholds.water = highValue;
 
         console.log("새 임계값 전송 시도:", thresholds);
         
         try {
-          const response = await fetch(PICO_ALARM_URL, {
+          const response = await fetch(url, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(thresholds)
@@ -647,11 +750,20 @@
         }
       }
 
-      // (수정) Fetch data from Raspberry Pi Pico (AP 모드)
+      // Fetch data from Raspberry Pi Pico (WiFi Client 모드)
       async function fetchPicoData() {
+        const ip = document.getElementById("picoIP").value;
+        if (!ip) {
+          console.warn("IP 주소가 입력되지 않았습니다.");
+          updatePicoStatus(false);
+          return;
+        }
+        
+        const PICO_API_URL = `http://${ip}:8080/sensors`;
+        
         try {
           const controller = new AbortController();
-          const timeoutId = setTimeout(() => controller.abort(), 2000); 
+          const timeoutId = setTimeout(() => controller.abort(), 2000);
 
           const response = await fetch(PICO_API_URL, {
             method: "GET",
@@ -678,54 +790,94 @@
       function updatePicoStatus(connected) {
         const picoStatus = document.getElementById("picoStatus");
         if (connected) {
-          picoStatus.innerHTML =
-            '<div class="status-indicator active"></div>피코: 연결됨';
+          picoStatus.innerHTML = '<div class="status-indicator active"></div>피코: 연결됨';
           picoStatus.className = "status active small";
         } else {
-          picoStatus.innerHTML =
-            '<div class="status-indicator paused"></div>피코: 연결 안됨';
+          picoStatus.innerHTML = '<div class="status-indicator paused"></div>피코: 연결 안됨';
           picoStatus.className = "status paused small";
         }
       }
 
-      // (수정) Update metrics display (조도 추가, 소리/수위 제거)
+      // Update metrics display
       function updateMetrics(data) {
         if (data.error) {
-            console.error("Sensor error:", data.error);
-            updatePicoStatus(false);
-            return;
+          console.error("Sensor error:", data.error);
+          updatePicoStatus(false);
+          return;
         }
         document.getElementById("tempValue").textContent = data.temperature;
         document.getElementById("humidityValue").textContent = data.humidity;
-        document.getElementById("lightValue").textContent = data.light; 
+        document.getElementById("lightValue").textContent = data.light;
+        
+        // (추가) 마이크/수위 센서 데이터 업데이트
+        const sensorType = data.sensor_type || "mic";
+        setSensorTypeUI(sensorType);
+        const adcSensorIcon = document.getElementById("adcSensorIcon");
+        const adcSensorLabel = document.getElementById("adcSensorLabel");
+        const adcSensorValue = document.getElementById("adcSensorValue");
+        const adcSensorUnit = document.getElementById("adcSensorUnit");
+        
+        if (sensorType === "mic" && data.mic !== undefined) {
+          adcSensorIcon.textContent = "🎤";
+          adcSensorLabel.textContent = "마이크";
+          adcSensorValue.textContent = data.mic;
+          adcSensorUnit.textContent = "";
+        } else if (sensorType === "water" && data.water_distance !== undefined) {
+          adcSensorIcon.textContent = "💧";
+          adcSensorLabel.textContent = "수위";
+          adcSensorValue.textContent = data.water_distance.toFixed(2);
+          adcSensorUnit.textContent = " cm";
+        }
+        
         updateStatusIndicators(data);
       }
 
-      // (수정) Update status indicators (조도 추가, 소리/수위 제거)
+      // Update status indicators
       function updateStatusIndicators(data) {
+        const highValue = 1000000;
+        
+        // 온도 임계값 확인
+        const tempThreshold = parseFloat(document.getElementById("tempAlarmSlider").value);
+        const tempAlarmActive = tempThreshold < 50 && data.temperature > tempThreshold;
         const tempStatus = document.getElementById("tempStatus");
-        if (data.alarm) { 
-          tempStatus.textContent = "위험";
-          tempStatus.className = "metric-status danger";
-        } else {
-          tempStatus.textContent = "정상";
-          tempStatus.className = "metric-status normal";
-        }
+        tempStatus.textContent = tempAlarmActive ? "위험" : "정상";
+        tempStatus.className = tempAlarmActive ? "metric-status danger" : "metric-status normal";
         
-        // (수정) 습도와 조도 상태도 알람 플래그에 연동
+        // 습도 임계값 확인
+        const humThreshold = parseFloat(document.getElementById("humAlarmSlider").value);
+        const humAlarmActive = humThreshold < 100 && data.humidity > humThreshold;
         const humStatus = document.getElementById("humidityStatus");
-        humStatus.textContent = data.alarm ? "위험" : "정상";
-        humStatus.className = data.alarm ? "metric-status danger" : "metric-status normal";
+        humStatus.textContent = humAlarmActive ? "위험" : "정상";
+        humStatus.className = humAlarmActive ? "metric-status danger" : "metric-status normal";
         
+        // 조도 임계값 확인
+        const lightThreshold = parseFloat(document.getElementById("lightAlarmSlider").value);
+        const lightAlarmActive = lightThreshold < 1000 && data.light > lightThreshold;
         const lightStatus = document.getElementById("lightStatus");
-        lightStatus.textContent = data.alarm ? "위험" : "정상";
-        lightStatus.className = data.alarm ? "metric-status danger" : "metric-status normal";
+        lightStatus.textContent = lightAlarmActive ? "위험" : "정상";
+        lightStatus.className = lightAlarmActive ? "metric-status danger" : "metric-status normal";
+        
+        // 마이크/수위 센서 임계값 확인
+        const sensorType = data.sensor_type || "mic";
+        const adcSensorStatus = document.getElementById("adcSensorStatus");
+        
+        if (sensorType === "mic" && data.mic !== undefined) {
+          const micThreshold = parseFloat(document.getElementById("micAlarmSlider").value);
+          const micAlarmActive = micThreshold < 5000 && data.mic > micThreshold;
+          adcSensorStatus.textContent = micAlarmActive ? "위험" : "정상";
+          adcSensorStatus.className = micAlarmActive ? "metric-status danger" : "metric-status normal";
+        } else if (sensorType === "water" && data.water_distance !== undefined) {
+          const waterThreshold = parseFloat(document.getElementById("waterAlarmSlider").value);
+          // 수위는 임계값을 넘어섰을 때 위험으로 표시
+          const waterAlarmActive = waterThreshold < 4 && data.water_distance > waterThreshold;
+          adcSensorStatus.textContent = waterAlarmActive ? "위험" : "정상";
+          adcSensorStatus.className = waterAlarmActive ? "metric-status danger" : "metric-status normal";
+        }
       }
 
-      // (수정) Update charts (조도 추가, 소리/수위 제거)
+      // Update charts
       function updateCharts(data) {
-        if (data.error) return; 
-        
+        if (data.error) return;
         const now = new Date().toLocaleTimeString();
 
         // (수정) 차트의 임계선도 UI 슬라이더 값에 따라 동적으로 변경
@@ -736,7 +888,7 @@
         // 온도 차트
         tempChart.data.labels.push(now);
         tempChart.data.datasets[0].data.push(data.temperature);
-        tempChart.data.datasets[1].data.push(tempThreshold >= 50 ? null : tempThreshold);
+        tempChart.data.datasets[1].data.push(tempThreshold >= 50 ? null : tempThreshold); // 비활성화(50)시 선 안그림
         if (tempChart.data.labels.length > 20) {
           tempChart.data.labels.shift();
           tempChart.data.datasets[0].data.shift();
@@ -765,54 +917,97 @@
           lightChart.data.datasets[1].data.shift(); 
         }
         lightChart.update("none");
+
+        // (추가) ADC 센서 차트 (마이크/수위)
+        const sensorType = data.sensor_type || "mic";
+        const adcChartTitle = document.getElementById("adcChartTitle");
+        
+        if (sensorType === "mic" && data.mic !== undefined) {
+          adcChartTitle.textContent = "마이크";
+          const micThreshold = parseFloat(document.getElementById("micAlarmSlider").value);
+          adcChart.data.labels.push(now);
+          adcChart.data.datasets[0].data.push(data.mic);
+          adcChart.data.datasets[1].data.push(micThreshold >= 5000 ? null : micThreshold);
+        } else if (sensorType === "water" && data.water_distance !== undefined) {
+          adcChartTitle.textContent = "수위";
+          const waterThreshold = parseFloat(document.getElementById("waterAlarmSlider").value);
+          adcChart.data.labels.push(now);
+          adcChart.data.datasets[0].data.push(data.water_distance);
+          // 임계값을 기준선으로 사용 (수위가 이 값을 넘으면 위험)
+          adcChart.data.datasets[1].data.push(waterThreshold >= 4 ? null : waterThreshold);
+        }
+        
+        if (adcChart.data.labels.length > 20) {
+          adcChart.data.labels.shift();
+          adcChart.data.datasets[0].data.shift();
+          adcChart.data.datasets[1].data.shift();
+        }
+        adcChart.update("none");
       }
 
-      // (수정) Start/stop data collection
+      // Start/stop data collection
       function toggleCollection() {
         if (isCollecting) {
           clearInterval(dataInterval);
           isCollecting = false;
           document.getElementById("startBtn").textContent = "모니터링 시작";
-          document.getElementById("status").innerHTML =
-            '<div class="status-indicator paused"></div>상태: 중지됨';
+          document.getElementById("status").innerHTML = '<div class="status-indicator paused"></div>상태: 중지됨';
           document.getElementById("status").className = "status paused small";
         } else {
+          const ip = document.getElementById("picoIP").value;
+          if (!ip) {
+            alert("피코 IP 주소를 먼저 입력하세요.");
+            return;
+          }
+          
           fetchPicoData(); 
           dataInterval = setInterval(fetchPicoData, interval);
           
           isCollecting = true;
           document.getElementById("startBtn").textContent = "모니터링 중지";
-          document.getElementById("status").innerHTML =
-            '<div class="status-indicator active"></div>상태: 모니터링 중';
+          document.getElementById("status").innerHTML = '<div class="status-indicator active"></div>상태: 모니터링 중';
           document.getElementById("status").className = "status active small";
         }
       }
 
-      // (수정) Test Pico connection (AP 모드)
+      // Test Pico connection
       async function testPicoConnection() {
+        const ip = document.getElementById("picoIP").value;
+        if (!ip) {
+          updatePicoStatus(false);
+          alert("IP 주소를 먼저 입력하세요.");
+          return;
+        }
+        const PICO_API_URL = `http://${ip}:8080/sensors`;
         try {
           const controller = new AbortController();
-          const timeoutId = setTimeout(() => controller.abort(), 2000);
+          const timeoutId = setTimeout(() => controller.abort(), 2000); // 2초 타임아웃
           
           const response = await fetch(PICO_API_URL, { signal: controller.signal });
           clearTimeout(timeoutId);
           
           updatePicoStatus(response.ok);
           if(response.ok) {
-            alert("✅ 피코 연결 성공! (AP 모드)");
+            alert("✅ 피코 연결 성공!");
           } else {
-            alert("❌ 피코 연결 실패: WiFi가 'test_rp'에 연결되었는지 확인하세요.");
+            alert("❌ 피코 연결 실패: IP 주소를 확인하세요.");
           }
         } catch (error) {
           updatePicoStatus(false);
-          alert("❌ 피코 연결 실패: WiFi가 'test_rp'에 연결되었는지 확인하세요.");
+          alert("❌ 피코 연결 실패: 네트워크 오류 또는 IP 주소를 확인하세요.");
         }
       }
       
-      // (추가) 비활성화 버튼용 전송 함수
+      // 비활성화 버튼용 전송 함수
       async function sendDirectAlarmThresholds(thresholds) {
+        const ip = document.getElementById("picoIP").value;
+        if (!ip) {
+          alert("IP 주소를 먼저 입력하세요.");
+          return;
+        }
+        const url = `http://${ip}:8080/alarm_threshold`;
         try {
-          const response = await fetch(PICO_ALARM_URL, {
+          const response = await fetch(url, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(thresholds)
@@ -828,13 +1023,59 @@
         }
       }
 
+      // (추가) 센서 타입 UI 갱신 함수
+      function setSensorTypeUI(newType) {
+        const select = document.getElementById("sensorTypeSelect");
+        if (select.value !== newType) {
+          select.value = newType;
+        }
+        const micGroup = document.getElementById("micAlarmGroup");
+        const waterGroup = document.getElementById("waterAlarmGroup");
+        if (newType === "mic") {
+          micGroup.style.display = "flex";
+          waterGroup.style.display = "none";
+        } else {
+          micGroup.style.display = "none";
+          waterGroup.style.display = "flex";
+        }
+      }
+
+      // (추가) 센서 타입 변경 함수
+      async function changeSensorType(newType) {
+        const ip = document.getElementById("picoIP").value;
+        if (!ip) {
+          console.warn("IP 주소가 입력되지 않아 센서 타입을 변경할 수 없습니다.");
+          return;
+        }
+        const url = `http://${ip}:8080/sensor_type`;
+        
+        try {
+          const response = await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ type: newType })
+          });
+          
+          if (response.ok) {
+            console.log(`센서 타입 변경 성공: ${newType}`);
+            setSensorTypeUI(newType);
+            // 현재 임계값 전송
+            sendAlarmThresholds();
+          } else {
+            console.error(`센서 타입 변경 실패 (HTTP ${response.status})`);
+          }
+        } catch (error) {
+          console.error("센서 타입 변경 중 네트워크 오류:", error);
+          updatePicoStatus(false);
+        }
+      }
+
       // Event listeners
       document.addEventListener("DOMContentLoaded", function () {
         
         const startBtn = document.getElementById("startBtn");
         startBtn.addEventListener("click", toggleCollection);
         
-        // (추가) 연결 테스트 버튼 리스너
         const testBtn = document.getElementById("testConnectionBtn");
         testBtn.addEventListener("click", testPicoConnection);
 
@@ -876,6 +1117,32 @@
         humSlider.addEventListener("change", sendAlarmThresholds);
         lightSlider.addEventListener("change", sendAlarmThresholds);
         
+        // (추가) 마이크/수위 슬라이더 이벤트 리스너
+        const micSlider = document.getElementById("micAlarmSlider");
+        const waterSlider = document.getElementById("waterAlarmSlider");
+        
+        micSlider.addEventListener("input", () => {
+          const val = parseFloat(micSlider.value);
+          document.getElementById("micAlarmValue").textContent = 
+            (val >= 5000) ? "비활성화" : val.toFixed(0);
+        });
+        
+        waterSlider.addEventListener("input", () => {
+          const val = parseFloat(waterSlider.value);
+          document.getElementById("waterAlarmValue").textContent = 
+            (val >= 4) ? "비활성화" : val.toFixed(1) + " cm";
+        });
+        
+        micSlider.addEventListener("change", sendAlarmThresholds);
+        waterSlider.addEventListener("change", sendAlarmThresholds);
+        
+        // (추가) 센서 타입 선택 이벤트 리스너
+        const sensorTypeSelect = document.getElementById("sensorTypeSelect");
+        sensorTypeSelect.addEventListener("change", function() {
+          const newType = this.value;
+          changeSensorType(newType);
+        });
+        
         // 알람 비활성화 버튼
         document.getElementById("disableAlarmBtn").addEventListener("click", () => {
             
@@ -883,15 +1150,21 @@
             tempSlider.value = 50; 
             humSlider.value = 100;
             lightSlider.value = 1000;
+            micSlider.value = 5000;
+            waterSlider.value = 4;
             document.getElementById("tempAlarmValue").textContent = "비활성화";
             document.getElementById("humAlarmValue").textContent = "비활성화";
             document.getElementById("lightAlarmValue").textContent = "비활성화";
+            document.getElementById("micAlarmValue").textContent = "비활성화";
+            document.getElementById("waterAlarmValue").textContent = "비활성화";
             
             // 2. 피코로 비활성화(높은 값) 임계값 전송
             const thresholds = {
                 temperature: highValue,
                 humidity: highValue,
-                light: highValue
+                light: highValue,
+                mic: highValue,
+                water: highValue
             };
             console.log("알람 비활성화, 높은 임계값 전송:", thresholds);
             

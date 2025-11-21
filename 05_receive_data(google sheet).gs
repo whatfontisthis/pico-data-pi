@@ -1,5 +1,5 @@
 function doPost(e) {
-  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Sheet1');
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('시트1');
   try {
     const data = JSON.parse(e.postData.contents);
 
