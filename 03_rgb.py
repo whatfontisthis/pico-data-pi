@@ -2,7 +2,7 @@ import machine
 import neopixel
 
 # 네오픽셀 설정
-pin = machine.pin(21) #21번 핀
+pin = machine.Pin(21) #21번 핀
 np = neopixel.NeoPixel(pin, 1) #네오픽셀 갯수 : 1개
 
 # 네오픽셀 켜기
