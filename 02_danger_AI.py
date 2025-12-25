@@ -102,17 +102,22 @@ def log_message(msg):
         print(f"Failed to write log: {e}")
 
 def display_text(text_list):
-    """OLED에 텍스트 목록을 출력합니다."""
+    """OLED에 텍스트 목록을 출력하고, 콘솔에도 출력합니다."""
+    # --- 추가된 부분: 콘솔 출력 ---
+    print("\n--- OLED Display ---")
+    for line in text_list:
+        print(line)
+    print("--------------------\n")
+    # --------------------------
+
     if oled is None: # OLED가 초기화되지 않았다면 함수 종료
         return
         
     oled.fill(0) # 화면 지우기
     for i, line_text in enumerate(text_list):
-        # (수정) Y 좌표 계산: 인덱스(i) * 한 줄 높이(16)
         y_pos = i * 16
-        
         if y_pos < OLED_HEIGHT:
-            oled.text(line_text, 0, y_pos) # (텍스트, X좌표, Y좌표)
+            oled.text(line_text, 0, y_pos) 
         else:
             break
     oled.show() # 화면 갱신
