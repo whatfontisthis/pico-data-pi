@@ -295,141 +295,155 @@ def start_server():
     addr = socket.getaddrinfo("0.0.0.0", 8080)[0][-1]
     s = socket.socket()
     s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-    s.bind(addr)
-    s.listen(5)
+    try:
+        s.bind(addr)
+        s.listen(5)
+    except OSError as e:
+        if e.errno == 98:  # EADDRINUSE
+            print(f"포트 8080이 이미 사용 중입니다. 다른 프로그램이 실행 중인지 확인하세요.")
+            display_text(["Port 8080", "Already in use", "Check running apps"])
+            return
+        else:
+            print(f"소켓 바인딩 오류: {e}")
+            display_text(["Socket Error", str(e)])
+            return
 
     led_green() 
 
     print(f"서버 시작됨: http://{ip_address}:8080")
-    print("=" * 50)
-    print("📊 IoT 모니터링 대시보드 (WiFi Client 모드)")
-    print(f"센서 API 엔드포인트: http://{ip_address}:8080/sensors")
-    print(f"제어 API 엔드포인트: http://{ip_address}:8080/alarm_threshold (POST)")
-    print("=" * 50)
-    
-    display_text(["Server Running", "Waiting for", "Connection..."])
 
-    while True:
-        try:
-            cl, addr = s.accept()
-            print(f"클라이언트 연결: {addr}")
+    display_text(["Server Running", f"IP: {ip_address}", "Port: 8080"])
 
-            request_raw = cl.recv(1024)
-            request = request_raw.decode("utf-8")
-            
-            if not request:
+    try:
+        while True:
+            try:
+                cl, addr = s.accept()
+
+                request_raw = cl.recv(1024)
+                request = request_raw.decode("utf-8")
+
+                if not request:
+                    cl.close()
+                    continue
+
+                if "OPTIONS" in request:
+                    response = create_response(200, "text/plain", "")
+                    cl.send(response.encode("utf-8"))
+
+                # (추가) POST /sensor_type 요청 처리 (센서 타입 변경)
+                elif "POST /sensor_type" in request:
+                    try:
+                        content_length_start = request.find("Content-Length: ") + 16
+                        content_length_end = request.find("\r\n", content_length_start)
+                        content_length = int(request[content_length_start:content_length_end])
+
+                        body_start = request.find("\r\n\r\n") + 4
+                        body = request[body_start : body_start + content_length]
+
+                        data = json.loads(body)
+
+                        if "type" in data and data["type"] in ["mic", "water"]:
+                            sensor_type = data["type"]
+                            print(f"센서 타입 변경됨: {sensor_type}")
+                            display_text(["Sensor Type", f"Changed to:", f"{sensor_type.upper()}"])
+                            response = create_response(200, "application/json", json.dumps({"status": "ok", "sensor_type": sensor_type}))
+                        else:
+                            response = create_response(400, "text/plain", "Invalid sensor type")
+                    except Exception as e:
+                        print(f"센서 타입 변경 오류: {e}")
+                        response = create_response(400, "text/plain", "Bad Request")
+
+                    cl.send(response.encode("utf-8"))
+
+                # (수정) POST /alarm_threshold 요청 처리
+                elif "POST /alarm_threshold" in request:
+                    try:
+                        # HTTP Body 부분 찾기
+                        content_length_start = request.find("Content-Length: ") + 16
+                        content_length_end = request.find("\r\n", content_length_start)
+                        content_length = int(request[content_length_start:content_length_end])
+
+                        body_start = request.find("\r\n\r\n") + 4
+                        body = request[body_start : body_start + content_length]
+
+                        new_thresholds = json.loads(body)
+
+                        # 전역 변수 업데이트
+                        if "temperature" in new_thresholds:
+                            alarm_thresholds["temperature"] = float(new_thresholds["temperature"])
+                        if "humidity" in new_thresholds:
+                            alarm_thresholds["humidity"] = float(new_thresholds["humidity"])
+                        if "light" in new_thresholds:
+                            alarm_thresholds["light"] = float(new_thresholds["light"])
+                        if "mic" in new_thresholds:
+                            alarm_thresholds["mic"] = float(new_thresholds["mic"])
+                        if "water" in new_thresholds:
+                            alarm_thresholds["water"] = float(new_thresholds["water"])
+
+                        print(f"임계값 업데이트됨: {alarm_thresholds}")
+
+                        # (수정) OLED 표시에 format_threshold 함수 적용
+                        t_str = format_threshold(alarm_thresholds['temperature'])
+                        h_str = format_threshold(alarm_thresholds['humidity'])
+                        l_str = format_threshold(alarm_thresholds['light'])
+                        m_str = format_threshold(alarm_thresholds['mic'])
+                        w_str = format_threshold(alarm_thresholds['water'])
+                        display_text(["Thresholds SET", f"T:{t_str} H:{h_str}", f"L:{l_str} M:{m_str}", f"W:{w_str}"])
+
+                        response = create_response(200, "application/json", json.dumps({"status": "ok", "thresholds": alarm_thresholds}))
+                    except Exception as e:
+                        print(f"POST 요청 처리 오류: {e}")
+                        response = create_response(400, "text/plain", "Bad Request")
+
+                    cl.send(response.encode("utf-8"))
+
+                elif "GET /sensors" in request:
+                    sensor_data = read_sensors()
+                    json_data = json.dumps(sensor_data)
+                    response = create_response(200, "application/json", json_data)
+                    cl.send(response.encode("utf-8"))
+
+                    if "error" not in sensor_data:
+                        lines = [
+                            f"T: {sensor_data['temperature']} C",
+                            f"H: {sensor_data['humidity']} %",
+                            f"L: {sensor_data['light']} lx"
+                        ]
+                        if sensor_data['sensor_type'] == "mic" and "mic" in sensor_data:
+                            lines.append(f"Mic: {sensor_data['mic']}")
+                        elif sensor_data['sensor_type'] == "water" and "water_distance" in sensor_data:
+                            lines.append(f"W: {sensor_data['water_distance']} cm")
+                        display_text(lines)
+
+                elif "GET /" in request:
+                    html = f"<html>...<body><h1>Pico Client Server</h1><p>IP: {ip_address}</p><p><a href='/sensors'>/sensors</a></p></body></html>"
+                    response = create_response(200, "text/html", html)
+                    cl.send(response.encode("utf-8"))
+
+                else:
+                    response = create_response(404, "text/plain", "Not Found")
+                    cl.send(response.encode("utf-8"))
+
                 cl.close()
-                continue
-                
-            print(f"요청: {request[:100]}...")
 
-            if "OPTIONS" in request:
-                response = create_response(200, "text/plain", "")
-                cl.send(response.encode("utf-8"))
+            except Exception as e:
+                print(f"서버 오류: {e}")
+                display_text(["Server Error", str(e)])
+                if 'cl' in locals():
+                    cl.close()
+                time.sleep(1)
 
-            # (추가) POST /sensor_type 요청 처리 (센서 타입 변경)
-            elif "POST /sensor_type" in request:
-                try:
-                    content_length_start = request.find("Content-Length: ") + 16
-                    content_length_end = request.find("\r\n", content_length_start)
-                    content_length = int(request[content_length_start:content_length_end])
-                    
-                    body_start = request.find("\r\n\r\n") + 4
-                    body = request[body_start : body_start + content_length]
-                    
-                    data = json.loads(body)
-                    
-                    if "type" in data and data["type"] in ["mic", "water"]:
-                        sensor_type = data["type"]
-                        print(f"센서 타입 변경됨: {sensor_type}")
-                        display_text(["Sensor Type", f"Changed to:", f"{sensor_type.upper()}"])
-                        response = create_response(200, "application/json", json.dumps({"status": "ok", "sensor_type": sensor_type}))
-                    else:
-                        response = create_response(400, "text/plain", "Invalid sensor type")
-                except Exception as e:
-                    print(f"센서 타입 변경 오류: {e}")
-                    response = create_response(400, "text/plain", "Bad Request")
-                
-                cl.send(response.encode("utf-8"))
-
-            # (수정) POST /alarm_threshold 요청 처리
-            elif "POST /alarm_threshold" in request:
-                try:
-                    # HTTP Body 부분 찾기
-                    content_length_start = request.find("Content-Length: ") + 16
-                    content_length_end = request.find("\r\n", content_length_start)
-                    content_length = int(request[content_length_start:content_length_end])
-                    
-                    body_start = request.find("\r\n\r\n") + 4
-                    body = request[body_start : body_start + content_length]
-                    
-                    new_thresholds = json.loads(body)
-                    
-                    # 전역 변수 업데이트
-                    if "temperature" in new_thresholds:
-                        alarm_thresholds["temperature"] = float(new_thresholds["temperature"])
-                    if "humidity" in new_thresholds:
-                        alarm_thresholds["humidity"] = float(new_thresholds["humidity"])
-                    if "light" in new_thresholds:
-                        alarm_thresholds["light"] = float(new_thresholds["light"])
-                    if "mic" in new_thresholds:
-                        alarm_thresholds["mic"] = float(new_thresholds["mic"])
-                    if "water" in new_thresholds:
-                        alarm_thresholds["water"] = float(new_thresholds["water"])
-                        
-                    print(f"임계값 업데이트됨: {alarm_thresholds}")
-                    
-                    # (수정) OLED 표시에 format_threshold 함수 적용
-                    t_str = format_threshold(alarm_thresholds['temperature'])
-                    h_str = format_threshold(alarm_thresholds['humidity'])
-                    l_str = format_threshold(alarm_thresholds['light'])
-                    m_str = format_threshold(alarm_thresholds['mic'])
-                    w_str = format_threshold(alarm_thresholds['water'])
-                    display_text(["Thresholds SET", f"T:{t_str} H:{h_str}", f"L:{l_str} M:{m_str}", f"W:{w_str}"])
-                    
-                    response = create_response(200, "application/json", json.dumps({"status": "ok", "thresholds": alarm_thresholds}))
-                except Exception as e:
-                    print(f"POST 요청 처리 오류: {e}")
-                    response = create_response(400, "text/plain", "Bad Request")
-                
-                cl.send(response.encode("utf-8"))
-
-            elif "GET /sensors" in request:
-                sensor_data = read_sensors()
-                json_data = json.dumps(sensor_data)
-                response = create_response(200, "application/json", json_data)
-                cl.send(response.encode("utf-8"))
-                print(f"센서 데이터 전송: {sensor_data}")
-                
-                if "error" not in sensor_data:
-                    lines = [
-                        f"T: {sensor_data['temperature']} C",
-                        f"H: {sensor_data['humidity']} %",
-                        f"L: {sensor_data['light']} lx"
-                    ]
-                    if sensor_data['sensor_type'] == "mic" and "mic" in sensor_data:
-                        lines.append(f"Mic: {sensor_data['mic']}")
-                    elif sensor_data['sensor_type'] == "water" and "water_distance" in sensor_data:
-                        lines.append(f"W: {sensor_data['water_distance']} cm")
-                    display_text(lines)
-
-            elif "GET /" in request:
-                html = f"<html>...<body><h1>Pico Client Server</h1><p>IP: {ip_address}</p><p><a href='/sensors'>/sensors</a></p></body></html>"
-                response = create_response(200, "text/html", html)
-                cl.send(response.encode("utf-8"))
-
-            else:
-                response = create_response(404, "text/plain", "Not Found")
-                cl.send(response.encode("utf-8"))
-
-            cl.close()
-
-        except Exception as e:
-            print(f"서버 오류: {e}")
-            display_text(["Server Error", str(e)])
-            if 'cl' in locals():
-                cl.close()
-            time.sleep(1)
+    except KeyboardInterrupt:
+        print("\n서버를 종료합니다...")
+        display_text(["Server", "Shutting down", "Good bye"])
+        buzzer_off()
+        led_red()
+        time.sleep(1)
+    finally:
+        # 서버 소켓 닫기 (포트 회수)
+        if 's' in locals():
+            s.close()
+            print("포트 8080이 회수되었습니다.")
 
 
 # ---- 프로그램 시작 ----
